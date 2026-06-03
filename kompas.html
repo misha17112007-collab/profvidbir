@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тренажер Компасів</title>
+
+<style>
+
+body{
+    font-family: Arial, sans-serif;
+    background:#f2f2f2;
+    margin:20px;
+}
+
+h1{
+    text-align:center;
+}
+
+.topbar{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:30px;
+    margin-bottom:20px;
+    flex-wrap:wrap;
+}
+
+button{
+    padding:10px 18px;
+    font-size:16px;
+    cursor:pointer;
+}
+
+.info{
+    font-size:20px;
+    font-weight:bold;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+    gap:12px;
+}
+
+.card{
+    background:white;
+    border-radius:12px;
+    padding:8px;
+    text-align:center;
+    border:3px solid transparent;
+    transition:0.2s;
+}
+
+.correct{
+    background:#b8ffb8;
+    border-color:green;
+}
+
+.wrong{
+    background:#ffb8b8;
+    border-color:red;
+}
+
+.finished{
+    background:#d0e8ff !important;
+    border-color:#0066cc !important;
+}
+
+canvas{
+    margin-bottom:6px;
+}
+
+select{
+    padding:5px;
+    font-size:13px;
+    width:110px;
+}
+
+</style>
+</head>
+<body>
+
+<h1>Тренажер Компасів</h1>
+
+<div class="topbar">
+
+    <button onclick="generatePage()">
+        Нова сторінка
+    </button>
+
+    <div class="info">
+        Правильно:
+        <span id="score">0</span>/50
+    </div>
+
+    <div class="info">
+        Час:
+        <span id="timer">05:00</span>
+    </div>
+
+</div>
+
+<div class="grid" id="grid"></div>
+
+<script>
+
+// =====================================
+// НАПРЯМКИ
+// =====================================
+
+const easyDirections = [
+    "Пн",
+    "Сх",
+    "Пд",
+    "Зх"
+];
+
+const hardDirections = [
+    "ПнСх",
+    "ПдСх",
+    "ПдЗх",
+    "ПнЗх"
+];
+
+const directions = [
+    ...easyDirections,
+    ...hardDirections
+];
+
+const angleMap = {
+    "Пн":0,
+    "ПнСх":45,
+    "Сх":90,
+    "ПдСх":135,
+    "Пд":180,
+    "ПдЗх":225,
+    "Зх":270,
+    "ПнЗх":315
+};
+
+// =====================================
+
+const TOTAL = 50;
+
+let score = 0;
+
+let timeLeft = 300;
+
+let timerInterval;
+
+// щоб уникати повторів
+
+const usedCombinations = new Set();
+
+// =====================================
+// ТАЙМЕР
+// =====================================
+
+function startTimer(){
+
+    clearInterval(timerInterval);
+
+    timeLeft = 300;
+
+    updateTimer();
+
+    timerInterval = setInterval(()=>{
+
+        timeLeft--;
+
+        updateTimer();
+
+        if(timeLeft <= 0){
+
+            clearInterval(timerInterval);
+
+            alert(
+                "Час вийшов!\n" +
+                "Результат: " + score + "/50"
+            );
+
+            disableAll();
+        }
+
+    },1000);
+}
+
+function updateTimer(){
+
+    const minutes =
+        String(Math.floor(timeLeft/60)).padStart(2,"0");
+
+    const seconds =
+        String(timeLeft%60).padStart(2,"0");
+
+    document.getElementById("timer").innerText =
+        `${minutes}:${seconds}`;
+}
+
+function disableAll(){
+
+    document
+    .querySelectorAll("select")
+    .forEach(select=>{
+        select.disabled = true;
+    });
+}
+
+// =====================================
+// ГЕНЕРАЦІЯ
+// =====================================
+
+function generatePage(){
+
+    score = 0;
+
+    usedCombinations.clear();
+
+    document.getElementById("score").innerText = score;
+
+    const grid = document.getElementById("grid");
+
+    grid.innerHTML = "";
+
+    startTimer();
+
+    for(let i=0;i<TOTAL;i++){
+
+        let knownDirection;
+        let targetDirection;
+        let compassRotation;
+        let combo;
+
+        do{
+
+            // 75% складних
+
+            const useHard =
+                Math.random() < 0.75;
+
+            if(useHard){
+
+                knownDirection =
+                    hardDirections[
+                        Math.floor(
+                            Math.random()*hardDirections.length
+                        )
+                    ];
+
+            }else{
+
+                knownDirection =
+                    directions[
+                        Math.floor(
+                            Math.random()*directions.length
+                        )
+                    ];
+            }
+
+            targetDirection =
+                directions[
+                    Math.floor(
+                        Math.random()*directions.length
+                    )
+                ];
+
+            // не однакові
+
+            if(knownDirection === targetDirection){
+                continue;
+            }
+
+            // косі кути
+
+            do{
+
+                compassRotation =
+                    Math.floor(Math.random()*360);
+
+            }
+            while(
+                compassRotation % 45 === 0
+            );
+
+            combo =
+                knownDirection +
+                targetDirection +
+                compassRotation;
+
+        }
+        while(
+            usedCombinations.has(combo)
+        );
+
+        usedCombinations.add(combo);
+
+        // =================================
+
+        const card = document.createElement("div");
+
+        card.className = "card";
+
+        const canvas = document.createElement("canvas");
+
+        canvas.width = 160;
+        canvas.height = 160;
+
+        drawCompass(
+            canvas,
+            knownDirection,
+            targetDirection,
+            compassRotation
+        );
+
+        // =================================
+
+        const select = document.createElement("select");
+
+        const defaultOption =
+            document.createElement("option");
+
+        defaultOption.text = "Вибір";
+
+        defaultOption.disabled = true;
+
+        defaultOption.selected = true;
+
+        select.appendChild(defaultOption);
+
+        directions.forEach(dir=>{
+
+            const option =
+                document.createElement("option");
+
+            option.value = dir;
+
+            option.text = dir;
+
+            select.appendChild(option);
+        });
+
+        let solved = false;
+
+        select.addEventListener("change",()=>{
+
+            if(select.value === targetDirection){
+
+                if(!solved){
+
+                    solved = true;
+
+                    score++;
+
+                    document.getElementById("score")
+                    .innerText = score;
+                }
+
+                card.classList.remove("wrong");
+
+                card.classList.add("correct");
+
+                select.disabled = true;
+
+                card.classList.add("finished");
+
+            }else{
+
+                card.classList.remove("correct");
+
+                card.classList.add("wrong");
+            }
+
+        });
+
+        card.appendChild(canvas);
+
+        card.appendChild(select);
+
+        grid.appendChild(card);
+    }
+}
+
+// =====================================
+// МАЛЮВАННЯ КОМПАСА
+// =====================================
+
+function drawCompass(
+    canvas,
+    knownDirection,
+    targetDirection,
+    compassRotation
+){
+
+    const ctx = canvas.getContext("2d");
+
+    const cx = canvas.width/2;
+
+    const cy = canvas.height/2;
+
+    const radius = 50;
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    ctx.save();
+
+    ctx.translate(cx,cy);
+
+    ctx.rotate(compassRotation*Math.PI/180);
+
+    const unrotate =
+        -compassRotation*Math.PI/180;
+
+    // =========================
+    // КОЛО
+    // =========================
+
+    ctx.beginPath();
+
+    ctx.arc(0,0,radius,0,Math.PI*2);
+
+    ctx.lineWidth = 3;
+
+    ctx.strokeStyle = "black";
+
+    ctx.stroke();
+
+    // =========================
+    // ШТРИХ
+    // =========================
+
+    const knownAngle =
+        angleMap[knownDirection] - 90;
+
+    const sx1 =
+        Math.cos(knownAngle*Math.PI/180)*radius;
+
+    const sy1 =
+        Math.sin(knownAngle*Math.PI/180)*radius;
+
+    const sx2 =
+        Math.cos(knownAngle*Math.PI/180)*(radius-10);
+
+    const sy2 =
+        Math.sin(knownAngle*Math.PI/180)*(radius-10);
+
+    ctx.beginPath();
+
+    ctx.moveTo(sx1,sy1);
+
+    ctx.lineTo(sx2,sy2);
+
+    ctx.lineWidth = 4;
+
+    ctx.stroke();
+
+    // =========================
+    // ТЕКСТ
+    // =========================
+
+    const textX =
+        Math.cos(knownAngle*Math.PI/180)*(radius+18);
+
+    const textY =
+        Math.sin(knownAngle*Math.PI/180)*(radius+18);
+
+    ctx.save();
+
+    ctx.translate(textX,textY);
+
+    ctx.rotate(unrotate);
+
+    ctx.font = "13px Arial";
+
+    ctx.fillStyle = "black";
+
+    ctx.textAlign = "center";
+
+    ctx.textBaseline = "middle";
+
+    ctx.fillText(
+        knownDirection,
+        0,
+        0
+    );
+
+    ctx.restore();
+
+    // =========================
+    // СТРІЛКА
+    // =========================
+
+    const targetAngle =
+        angleMap[targetDirection] - 90;
+
+    const x1 =
+        -Math.cos(targetAngle*Math.PI/180)*(radius-5);
+
+    const y1 =
+        -Math.sin(targetAngle*Math.PI/180)*(radius-5);
+
+    const x2 =
+        Math.cos(targetAngle*Math.PI/180)*(radius-5);
+
+    const y2 =
+        Math.sin(targetAngle*Math.PI/180)*(radius-5);
+
+    ctx.beginPath();
+
+    ctx.moveTo(x1,y1);
+
+    ctx.lineTo(x2,y2);
+
+    ctx.lineWidth = 4;
+
+    ctx.stroke();
+
+    drawArrowHead(ctx,x1,y1,x2,y2);
+
+    ctx.restore();
+}
+
+// =====================================
+// НАКОНЕЧНИК
+// =====================================
+
+function drawArrowHead(ctx,x1,y1,x2,y2){
+
+    const angle =
+        Math.atan2(y2-y1,x2-x1);
+
+    ctx.beginPath();
+
+    ctx.moveTo(x2,y2);
+
+    ctx.lineTo(
+        x2 - 10*Math.cos(angle - Math.PI/6),
+        y2 - 10*Math.sin(angle - Math.PI/6)
+    );
+
+    ctx.moveTo(x2,y2);
+
+    ctx.lineTo(
+        x2 - 10*Math.cos(angle + Math.PI/6),
+        y2 - 10*Math.sin(angle + Math.PI/6)
+    );
+
+    ctx.lineWidth = 4;
+
+    ctx.stroke();
+}
+
+// =====================================
+
+generatePage();
+
+</script>
+
+</body>
+</html>

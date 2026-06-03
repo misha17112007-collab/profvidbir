@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тренажер Годинників</title>
+
+<style>
+
+body{
+    font-family: Arial, sans-serif;
+    background:#f2f2f2;
+    margin:20px;
+}
+
+h1{
+    text-align:center;
+}
+
+.topbar{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:30px;
+    margin-bottom:20px;
+    flex-wrap:wrap;
+}
+
+button{
+    padding:10px 18px;
+    font-size:16px;
+    cursor:pointer;
+}
+
+.info{
+    font-size:20px;
+    font-weight:bold;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:12px;
+}
+
+.card{
+    background:white;
+    border-radius:12px;
+    padding:8px;
+    text-align:center;
+    border:3px solid transparent;
+    transition:0.2s;
+}
+
+.correct{
+    background:#b8ffb8;
+    border-color:green;
+}
+
+.wrong{
+    background:#ffb8b8;
+    border-color:red;
+}
+
+.finished{
+    background:#d0e8ff !important;
+    border-color:#0066cc !important;
+}
+
+canvas{
+    margin-bottom:8px;
+}
+
+.timeSelects{
+    display:flex;
+    justify-content:center;
+    gap:6px;
+}
+
+select{
+    padding:5px;
+    font-size:14px;
+}
+
+</style>
+</head>
+<body>
+
+<h1>Тренажер Годинників</h1>
+
+<div class="topbar">
+
+    <button onclick="generatePage()">
+        Нова сторінка
+    </button>
+
+    <div class="info">
+        Правильно:
+        <span id="score">0</span>/50
+    </div>
+
+    <div class="info">
+        Час:
+        <span id="timer">05:00</span>
+    </div>
+
+</div>
+
+<div class="grid" id="grid"></div>
+
+<script>
+
+const TOTAL = 50;
+
+let score = 0;
+
+let timeLeft = 300;
+
+let timerInterval;
+
+const used = new Set();
+
+// =========================
+// ТАЙМЕР
+// =========================
+
+function startTimer(){
+
+    clearInterval(timerInterval);
+
+    timeLeft = 300;
+
+    updateTimer();
+
+    timerInterval = setInterval(()=>{
+
+        timeLeft--;
+
+        updateTimer();
+
+        if(timeLeft <= 0){
+
+            clearInterval(timerInterval);
+
+            alert(
+                "Час вийшов!\n" +
+                "Результат: " + score + "/50"
+            );
+
+            disableAll();
+        }
+
+    },1000);
+}
+
+function updateTimer(){
+
+    const minutes =
+        String(Math.floor(timeLeft/60)).padStart(2,"0");
+
+    const seconds =
+        String(timeLeft%60).padStart(2,"0");
+
+    document.getElementById("timer").innerText =
+        `${minutes}:${seconds}`;
+}
+
+function disableAll(){
+
+    document
+    .querySelectorAll("select")
+    .forEach(select=>{
+        select.disabled = true;
+    });
+}
+
+// =========================
+// ГЕНЕРАЦІЯ
+// =========================
+
+function generatePage(){
+
+    score = 0;
+
+    used.clear();
+
+    document.getElementById("score").innerText = score;
+
+    const grid =
+        document.getElementById("grid");
+
+    grid.innerHTML = "";
+
+    startTimer();
+
+    for(let i=0;i<TOTAL;i++){
+
+        let hour;
+        let minute;
+        let knownNumber;
+        let rotation;
+        let combo;
+
+        do{
+
+            // складні години частіше
+
+            hour =
+                Math.floor(Math.random()*12)+1;
+
+            // тільки рівні хвилини
+
+            const minuteOptions = [
+                0,5,10,15,20,25,
+                30,35,40,45,50,55
+            ];
+
+            minute =
+                minuteOptions[
+                    Math.floor(
+                        Math.random()*minuteOptions.length
+                    )
+                ];
+
+            knownNumber =
+                Math.floor(Math.random()*12)+1;
+
+            // косі повороти
+
+            do{
+
+                rotation =
+                    Math.floor(Math.random()*360);
+
+            }
+            while(rotation % 30 === 0);
+
+            combo =
+                hour +
+                ":" +
+                minute +
+                "-" +
+                knownNumber +
+                "-" +
+                rotation;
+
+        }
+        while(used.has(combo));
+
+        used.add(combo);
+
+        // =========================
+
+        const card =
+            document.createElement("div");
+
+        card.className = "card";
+
+        const canvas =
+            document.createElement("canvas");
+
+        canvas.width = 220;
+        canvas.height = 220;
+
+        drawClock(
+            canvas,
+            hour,
+            minute,
+            knownNumber,
+            rotation
+        );
+
+        // =========================
+
+        const selects =
+            document.createElement("div");
+
+        selects.className = "timeSelects";
+
+        const hourSelect =
+            document.createElement("select");
+
+        const minuteSelect =
+            document.createElement("select");
+
+        // години
+
+        const hDefault =
+            document.createElement("option");
+
+        hDefault.text = "Год";
+
+        hDefault.disabled = true;
+
+        hDefault.selected = true;
+
+        hourSelect.appendChild(hDefault);
+
+        for(let h=1;h<=12;h++){
+
+            const option =
+                document.createElement("option");
+
+            option.value = h;
+
+            option.text = String(h).padStart(2,"0");
+
+            hourSelect.appendChild(option);
+        }
+
+        // хвилини
+
+        const mDefault =
+            document.createElement("option");
+
+        mDefault.text = "Хв";
+
+        mDefault.disabled = true;
+
+        mDefault.selected = true;
+
+        minuteSelect.appendChild(mDefault);
+
+        const minuteOptions = [
+            0,5,10,15,20,25,
+            30,35,40,45,50,55
+        ];
+
+        minuteOptions.forEach(m=>{
+
+            const option =
+                document.createElement("option");
+
+            option.value = m;
+
+            option.text =
+                String(m).padStart(2,"0");
+
+            minuteSelect.appendChild(option);
+        });
+
+        // =========================
+
+        let solved = false;
+
+        function checkAnswer(){
+
+    // нічого не робимо
+    // поки не вибрані і години і хвилини
+
+    if(
+        hourSelect.selectedIndex === 0 ||
+        minuteSelect.selectedIndex === 0
+    ){
+        return;
+    }
+
+    if(
+        Number(hourSelect.value) === hour &&
+        Number(minuteSelect.value) === minute
+    ){
+
+        if(!solved){
+
+            solved = true;
+
+            score++;
+
+            document.getElementById("score")
+            .innerText = score;
+        }
+
+        card.classList.remove("wrong");
+
+        card.classList.add("correct");
+
+        hourSelect.disabled = true;
+
+        minuteSelect.disabled = true;
+
+        card.classList.add("finished");
+
+    }else{
+
+        card.classList.remove("correct");
+
+        card.classList.add("wrong");
+    }
+}
+
+        hourSelect.addEventListener(
+            "change",
+            checkAnswer
+        );
+
+        minuteSelect.addEventListener(
+            "change",
+            checkAnswer
+        );
+
+        selects.appendChild(hourSelect);
+
+        selects.appendChild(minuteSelect);
+
+        card.appendChild(canvas);
+
+        card.appendChild(selects);
+
+        grid.appendChild(card);
+    }
+}
+
+// =========================
+// МАЛЮВАННЯ ГОДИННИКА
+// =========================
+
+function drawClock(
+    canvas,
+    hour,
+    minute,
+    knownNumber,
+    rotation
+){
+
+    const ctx =
+        canvas.getContext("2d");
+
+    const cx = canvas.width/2;
+
+    const cy = canvas.height/2;
+
+    const radius = 80;
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    ctx.save();
+
+    ctx.translate(cx,cy);
+
+    ctx.rotate(rotation*Math.PI/180);
+
+    const unrotate =
+        -rotation*Math.PI/180;
+
+    // =========================
+    // КОЛО
+    // =========================
+
+    ctx.beginPath();
+
+    ctx.arc(0,0,radius,0,Math.PI*2);
+
+    ctx.lineWidth = 2;
+
+    ctx.stroke();
+
+    // =========================
+    // РИСКИ
+    // =========================
+
+    for(let i=0;i<60;i++){
+
+        const angle =
+            (i*6-90)*Math.PI/180;
+
+        const outerX =
+            Math.cos(angle)*radius;
+
+        const outerY =
+            Math.sin(angle)*radius;
+
+        const innerLength =
+            i%5===0 ? 12 : 6;
+
+        const innerX =
+            Math.cos(angle)*(radius-innerLength);
+
+        const innerY =
+            Math.sin(angle)*(radius-innerLength);
+
+        ctx.beginPath();
+
+        ctx.moveTo(outerX,outerY);
+
+        ctx.lineTo(innerX,innerY);
+
+        ctx.lineWidth =
+            i%5===0 ? 3 : 1.5;
+
+        ctx.stroke();
+    }
+
+    // =========================
+    // ПІДПИСАНЕ ЧИСЛО
+    // =========================
+
+    const knownAngle =
+        ((knownNumber*30)-90)*
+        Math.PI/180;
+
+    const textX =
+        Math.cos(knownAngle)*
+        (radius-20);
+
+    const textY =
+        Math.sin(knownAngle)*
+        (radius-20);
+
+    ctx.save();
+
+    ctx.translate(textX,textY);
+
+    ctx.rotate(unrotate);
+
+    ctx.font = "24px Arial";
+
+    ctx.fillStyle = "black";
+
+    ctx.textAlign = "center";
+
+    ctx.textBaseline = "middle";
+
+    ctx.fillText(
+        knownNumber,
+        0,
+        0
+    );
+
+    ctx.restore();
+
+    // =========================
+    // ХВИЛИННА СТРІЛКА
+    // =========================
+
+    const minuteAngle =
+        ((minute*6)-90)*
+        Math.PI/180;
+
+    const minuteX =
+        Math.cos(minuteAngle)*
+        (radius-12);
+
+    const minuteY =
+        Math.sin(minuteAngle)*
+        (radius-12);
+
+    ctx.beginPath();
+
+    ctx.moveTo(0,0);
+
+    ctx.lineTo(minuteX,minuteY);
+
+    ctx.lineWidth = 3;
+
+    ctx.stroke();
+
+    // =========================
+    // ГОДИННА СТРІЛКА
+    // =========================
+
+    const hourAngle =
+        (((hour%12)*30)+(minute*0.5)-90)*
+        Math.PI/180;
+
+    const hourX =
+        Math.cos(hourAngle)*
+        (radius-28);
+
+    const hourY =
+        Math.sin(hourAngle)*
+        (radius-28);
+
+    ctx.beginPath();
+
+    ctx.moveTo(0,0);
+
+    ctx.lineTo(hourX,hourY);
+
+    ctx.lineWidth = 5;
+
+    ctx.stroke();
+
+    // центр
+
+    ctx.beginPath();
+
+    ctx.arc(0,0,4,0,Math.PI*2);
+
+    ctx.fill();
+
+    ctx.restore();
+}
+
+generatePage();
+
+</script>
+
+</body>
+</html>
