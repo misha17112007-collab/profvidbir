@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Закономірності</title>
+
+<style>
+
+body{
+    font-family: Arial, sans-serif;
+    background:#f2f2f2;
+    margin:20px;
+}
+
+h1{
+    text-align:center;
+}
+
+.topbar{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:30px;
+    margin-bottom:20px;
+    flex-wrap:wrap;
+}
+
+button{
+    padding:10px 18px;
+    font-size:16px;
+    cursor:pointer;
+}
+
+.info{
+    font-size:20px;
+    font-weight:bold;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+    gap:16px;
+}
+
+.card{
+    background:white;
+    border-radius:14px;
+    padding:16px;
+    border:3px solid transparent;
+    transition:0.2s;
+}
+
+.correct{
+    background:#b8ffb8;
+    border-color:green;
+}
+
+.wrong{
+    background:#ffb8b8;
+    border-color:red;
+}
+
+.finished{
+    background:#d0e8ff !important;
+    border-color:#0066cc !important;
+}
+
+.pattern{
+    font-size:34px;
+    font-weight:bold;
+    text-align:center;
+    margin-bottom:18px;
+    letter-spacing:5px;
+}
+
+.words{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.word{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:22px;
+}
+
+.checkBtn{
+    margin-top:14px;
+    width:100%;
+    padding:10px;
+    font-size:16px;
+    cursor:pointer;
+}
+
+</style>
+</head>
+<body>
+
+<h1>Закономірності</h1>
+
+<div class="topbar">
+
+    <button onclick="generatePage()">
+        Нова сторінка
+    </button>
+
+    <div class="info">
+        Правильно:
+        <span id="score">0</span>/25
+    </div>
+
+    <div class="info">
+        Час:
+        <span id="timer">08:00</span>
+    </div>
+
+</div>
+
+<div class="grid" id="grid"></div>
+
+<script>
+
+// ========================================
+// НАЛАШТУВАННЯ
+// ========================================
+
+const TOTAL = 25;
+
+const SYMBOLS = [
+    "!",
+    "?",
+    "+",
+    ":",
+    "0",
+    "#",
+    "%",
+    "&",
+    "=",
+    "-"
+];
+
+const WORDS = [
+
+    "абандон",
+    "паводок",
+    "фабрика",
+    "абердин",
+    "падение",
+    "трактор",
+    "самовар",
+    "параграф",
+    "компас",
+    "заводик",
+    "караван",
+    "ананас",
+    "топот",
+    "казак",
+    "шалаш",
+    "кабан",
+    "барабан",
+    "телефон",
+    "паровоз",
+    "водопад",
+    "молоток",
+    "система",
+    "самолет",
+    "подорож",
+    "перерва",
+    "банан",
+    "балалайка",
+    "коробок",
+    "автобус",
+    "колокол",
+    "торпеда",
+    "каракал",
+    "лампочка",
+    "парашют",
+    "гармошка",
+    "методика",
+    "кабачок",
+    "бульвар",
+    "кафетерий",
+    "підручник",
+    "перископ",
+    "механика"
+
+];
+
+// ========================================
+
+let score = 0;
+
+let timeLeft = 480;
+
+let timerInterval;
+
+// ========================================
+// ТАЙМЕР
+// ========================================
+
+function startTimer(){
+
+    clearInterval(timerInterval);
+
+    timeLeft = 480;
+
+    updateTimer();
+
+    timerInterval = setInterval(()=>{
+
+        timeLeft--;
+
+        updateTimer();
+
+        if(timeLeft <= 0){
+
+            clearInterval(timerInterval);
+
+            alert(
+                "Час вийшов!\n" +
+                "Результат: " + score + "/25"
+            );
+
+            disableAll();
+        }
+
+    },1000);
+}
+
+function updateTimer(){
+
+    const minutes =
+        String(Math.floor(timeLeft/60)).padStart(2,"0");
+
+    const seconds =
+        String(timeLeft%60).padStart(2,"0");
+
+    document.getElementById("timer").innerText =
+        `${minutes}:${seconds}`;
+}
+
+function disableAll(){
+
+    document
+    .querySelectorAll("input")
+    .forEach(el=>{
+        el.disabled = true;
+    });
+
+    document
+    .querySelectorAll("button")
+    .forEach(btn=>{
+        if(btn.innerText === "Перевірити"){
+            btn.disabled = true;
+        }
+    });
+}
+
+// ========================================
+// МАСКА СЛОВА
+// ========================================
+
+function getPattern(word){
+
+    const map = {};
+
+    let counter = 0;
+
+    const result = [];
+
+    for(let char of word){
+
+        if(map[char] === undefined){
+
+            map[char] = counter;
+
+            counter++;
+        }
+
+        result.push(map[char]);
+    }
+
+    return result.join("-");
+}
+
+// ========================================
+// ГЕНЕРАЦІЯ СИМВОЛІВ
+// ========================================
+
+function createSymbolPattern(word){
+
+    const map = {};
+
+    let counter = 0;
+
+    let result = [];
+
+    for(let char of word){
+
+        if(map[char] === undefined){
+
+            map[char] = SYMBOLS[counter];
+
+            counter++;
+        }
+
+        result.push(map[char]);
+    }
+
+    return result.join(" ");
+}
+
+// ========================================
+// ГЕНЕРАЦІЯ СТОРІНКИ
+// ========================================
+
+function generatePage(){
+
+    score = 0;
+
+    document.getElementById("score")
+    .innerText = score;
+
+    const grid =
+        document.getElementById("grid");
+
+    grid.innerHTML = "";
+
+    startTimer();
+
+    for(let i=0;i<TOTAL;i++){
+
+        createTask(grid);
+    }
+}
+
+// ========================================
+// СТВОРЕННЯ ЗАДАЧІ
+// ========================================
+
+function createTask(grid){
+
+    // шукаємо слово зі складною структурою
+
+    let correctWord;
+
+    do{
+
+        correctWord =
+            WORDS[
+                Math.floor(Math.random()*WORDS.length)
+            ];
+
+    }
+    while(
+        new Set(correctWord).size >= correctWord.length
+    );
+
+    const targetPattern =
+        getPattern(correctWord);
+
+    const patternText =
+        createSymbolPattern(correctWord);
+
+    // ====================================
+
+    let options = [correctWord];
+
+    // додаємо неправильні
+
+    while(options.length < 5){
+
+        const word =
+            WORDS[
+                Math.floor(Math.random()*WORDS.length)
+            ];
+
+        if(
+            getPattern(word) !== targetPattern &&
+            !options.includes(word)
+        ){
+            options.push(word);
+        }
+    }
+
+    // перемішування
+
+    options.sort(()=>Math.random()-0.5);
+
+    // ====================================
+
+    const card =
+        document.createElement("div");
+
+    card.className = "card";
+
+    // ====================================
+
+    const pattern =
+        document.createElement("div");
+
+    pattern.className = "pattern";
+
+    pattern.innerText = patternText;
+
+    card.appendChild(pattern);
+
+    // ====================================
+
+    const wordsDiv =
+        document.createElement("div");
+
+    wordsDiv.className = "words";
+
+    const checkboxes = [];
+
+    options.forEach(word=>{
+
+        const label =
+            document.createElement("label");
+
+        label.className = "word";
+
+        const checkbox =
+            document.createElement("input");
+
+        checkbox.type = "checkbox";
+
+        checkbox.value = word;
+
+        checkboxes.push(checkbox);
+
+        label.appendChild(checkbox);
+
+        label.appendChild(
+            document.createTextNode(word)
+        );
+
+        wordsDiv.appendChild(label);
+    });
+
+    card.appendChild(wordsDiv);
+
+    // ====================================
+
+    const checkBtn =
+        document.createElement("button");
+
+    checkBtn.className = "checkBtn";
+
+    checkBtn.innerText = "Перевірити";
+
+    let solved = false;
+
+    checkBtn.addEventListener("click",()=>{
+
+        const selected =
+            checkboxes
+            .filter(cb=>cb.checked)
+            .map(cb=>cb.value);
+
+        const correctAnswers =
+            options.filter(word=>
+                getPattern(word) === targetPattern
+            );
+
+        const isCorrect =
+
+            selected.length === correctAnswers.length &&
+
+            selected.every(word=>
+                correctAnswers.includes(word)
+            );
+
+        if(isCorrect){
+
+            if(!solved){
+
+                solved = true;
+
+                score++;
+
+                document.getElementById("score")
+                .innerText = score;
+            }
+
+            card.classList.remove("wrong");
+
+            card.classList.add("correct");
+
+            card.classList.add("finished");
+
+            checkboxes.forEach(cb=>{
+                cb.disabled = true;
+            });
+
+            checkBtn.disabled = true;
+
+        }else{
+
+            card.classList.remove("correct");
+
+            card.classList.add("wrong");
+        }
+
+    });
+
+    card.appendChild(checkBtn);
+
+    // ====================================
+
+    grid.appendChild(card);
+}
+
+// ========================================
+
+generatePage();
+
+</script>
+
+</body>
+</html>
